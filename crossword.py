@@ -7,6 +7,7 @@ import re
 import requests
 import secrets
 import shelve
+import uuid
 from selenium import webdriver
 
 SETTINGS_FILENAME='/home/pi/.sopel/plugins/crossword_settings'
@@ -14,7 +15,7 @@ LAST_DATE_KEY='last_date'
 
 DEFAULT_DATE=datetime.datetime.combine(datetime.date(2023, 4, 17), datetime.datetime.min.time())
 NEWYORKER_CROSSWORD_BASE_URL='https://www.newyorker.com/puzzles-and-games-dept/crossword/'
-NEWYORKER_CROSSWORD_REGEX=r'www\.newyorker\.com\/puzzles-and-games-dept\/crossword\/(\d{4})\/(\d{2})\/(\d{2})'
+NEWYORKER_CROSSWORD_REGEX='(https?:\/\/)?www\.newyorker\.com\/puzzles-and-games-dept\/crossword\/(\d{4})\/(\d{2})\/(\d{2})'
 
 def set_last_date(date):
     with shelve.open(SETTINGS_FILENAME, writeback=True) as db:
@@ -56,16 +57,17 @@ def is_valid_crossword_date(date):
     return req.status_code == 200
     #return date.weekday() >= 0 and date.weekday() <= 4 
 
-@plugin.url(NEWYORKER_CROSSWORD_REGEX)
+@plugin.rule(r"^!cw set " + NEWYORKER_CROSSWORD_REGEX + "$")
 @plugin.require_chanmsg('Channel only command.')
 def register_crossword(bot, trigger):
     match = trigger.match
-    year = int(match.group(1))
-    month = int(match.group(2))
-    day = int(match.group(3))
+    year = int(match.group(2))
+    month = int(match.group(3))
+    day = int(match.group(4))
     date = datetime.date(year, month, day)
     if is_valid_crossword_date(date):
         set_last_date(date)
+    bot.say("Successfully set last crossword URL")
 
 @plugin.rule(r'^!cw prev$')
 @plugin.require_chanmsg('Channel only command.')
@@ -83,3 +85,17 @@ def crossword_next(bot, trigger):
     while not is_valid_crossword_date(date):
         date = date + datetime.timedelta(1)
     set_next_crossword(bot, date)
+
+@plugin.rule(r'^!lastcw$')
+@plugin.rule(r'^!cw last$')
+@plugin.require_chanmsg('Channel only command.')
+def show_last_crossword(bot, trigger):
+    bot.say("Last crossword was: " + get_crossword_url(get_last_date()))
+
+@plugin.rule(r'^!debugshare$')
+def debug_share_url(bot, trigger):
+    _last_url = get_crossword_url(get_last_date())
+    _last_url += "?id=" + secrets.token_hex(4) + "&playId=" + str(uuid.uuid4())
+    req = requests.get(_last_url)
+    if req.status_code == 200:
+        bot.say("Shared debug URL: " + _last_url)
