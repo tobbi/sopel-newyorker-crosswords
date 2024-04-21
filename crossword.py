@@ -162,7 +162,7 @@ def get_crosswords_until(bot, trigger):
 
 @plugin.interval(60 * 60 * 24)
 def reindex_crosswords(bot):
-    bot.say("Reindexing crosswords...", "Tobbi")
+    bot.say("Reindexing crosswords...", bot.settings.core.owner)
 
     idx = 1
     num_added = 0
@@ -185,7 +185,7 @@ def reindex_crosswords(bot):
             try:
                 all_dates.index(date)
             except ValueError:
-                bot.say("Adding " + str(date), "Tobbi")
+                bot.say("Adding " + str(date), bot.settings.core.owner)
                 all_dates.append(date)
                 num_added += 1
 
