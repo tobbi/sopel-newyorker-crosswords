@@ -155,7 +155,10 @@ def get_crosswords_until(bot, trigger):
     last_played_date = get_last_date()
     last_date = all_dates[-1]
     diff = all_dates.index(last_date) - all_dates.index(last_played_date)
-    bot.say("Roughly " + str(diff) + " crosswords to play")
+    if diff > 0:
+        bot.say("Roughly " + str(diff) + " crosswords to play")
+    else:
+        bot.say("You're all up-to-date!")
 
 @plugin.interval(60 * 60 * 24)
 def reindex_crosswords(bot):
@@ -193,4 +196,7 @@ def reindex_crosswords(bot):
 
     all_dates.sort()
     set_crossword_dates(all_dates)
-    bot.say("Successfully added " + str(num_added) + " crossword(s) to database")
+    if num_added > 0:
+        bot.say("Successfully added " + str(num_added) + " crossword(s) to database")
+    else:
+        bot.say("Crosswords up-to-date!")
