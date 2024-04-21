@@ -199,4 +199,4 @@ def reindex_crosswords(bot):
     if num_added > 0:
         bot.say("Successfully added " + str(num_added) + " crossword(s) to database")
     else:
-        bot.say("Crosswords up-to-date!")
+        bot.say("Crosswords up-to-date! My database contains " + str(len(all_dates)) + " crosswords.")
