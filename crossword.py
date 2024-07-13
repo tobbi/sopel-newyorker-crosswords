@@ -13,26 +13,51 @@ from selenium import webdriver
 
 PLUGIN_BASE_DIR='/home/pi/.sopel/plugins'
 SETTINGS_FILENAME=PLUGIN_BASE_DIR + '/crossword_settings'
+
+# Keys used in settings file
+FIRST_DATE_KEY='first_date'
 LAST_DATE_KEY='last_date'
 ALL_DATES_KEY='all_dates'
+SOLVED_DATES_KEY='solved_dates'
 
-DEFAULT_DATE=datetime.datetime.combine(datetime.date(2023, 4, 17), datetime.datetime.min.time())
+DEFAULT_DATE=datetime.date(2023, 4, 17)
+DEFAULT_FIRST_DATE=datetime.date(2021, 7, 28)
 AMUSELABS_CDN_URL='https://cdn3.amuselabs.com/tny/crossword?set=tny-weekly&embed=1&compact=1&maxCols=2'
 NEWYORKER_CROSSWORD_BASE_URL='https://www.newyorker.com/puzzles-and-games-dept/crossword/'
 NEWYORKER_CROSSWORD_REGEX='((https?:\/\/)?www\.newyorker\.com)?\/puzzles-and-games-dept\/crossword\/(\d{4})\/(\d{2})\/(\d{2})'
 
-def set_last_date(date):
-    with shelve.open(SETTINGS_FILENAME, writeback=True) as db:
-        db[LAST_DATE_KEY] = date
+##############################################################
+#                     Settings file                          #
+##############################################################
 
-def get_last_date():
+def save_date_to_settings(key, date):
+    with shelve.open(SETTINGS_FILENAME, writeback=True) as db:
+        db[key] = date
+
+def get_date_from_settings(key, default=DEFAULT_DATE):
     try:
         with shelve.open(SETTINGS_FILENAME) as db:
-            if not LAST_DATE_KEY in db:
-                db[LAST_DATE_KEY] = DEFAULT_DATE
-            return db[LAST_DATE_KEY]
+            if not key in db:
+                db[key] = default
+            return db[key]
     except:
         return DEFAULT_DATE
+
+
+##############################################################
+#                    Crossword Dates                         #
+##############################################################
+def set_first_date(date):
+    save_date_to_settings(FIRST_DATE_KEY, date)
+
+def get_first_date():
+    return get_date_from_settings(FIRST_DATE_KEY, default=DEFAULT_FIRST_DATE)
+
+def set_last_date(date):
+    save_date_to_settings(LAST_DATE_KEY, date)
+
+def get_last_date():
+    return get_date_from_settings(LAST_DATE_KEY)
 
 def get_crossword_dates():
     try:
@@ -43,9 +68,26 @@ def get_crossword_dates():
     except:
         return []
 
+def get_solved_dates():
+    try:
+        with shelve.open(SETTINGS_FILENAME, writeback=True) as db:
+            if not SOLVED_DATES_KEY in db:
+                db[SOLVED_DATES_KEY] = []
+            return db[SOLVED_DATES_KEY]
+    except:
+        return []
+
+def set_solved_dates(solved_dates):
+    with shelve.open(SETTINGS_FILENAME, writeback=True) as db:
+        db[SOLVED_DATES_KEY] = solved_dates
+
 def set_crossword_dates(dates):
     with shelve.open(SETTINGS_FILENAME, writeback=True) as db:
         db[ALL_DATES_KEY] = dates
+
+#############################################################
+#                   URL sharing (WIP)                       #
+#############################################################
 
 def get_crossword_url(date):
     return NEWYORKER_CROSSWORD_BASE_URL + date.strftime("%Y/%m/%d")
@@ -69,6 +111,11 @@ def set_next_crossword(bot, date):
     #shared_url = get_shared_url(crossword_url)
     bot.say(crossword_url + " " + date.strftime("(%A)"))
     set_last_date(date)
+
+def set_next_old_crossword(bot, date):
+    crossword_url = get_crossword_url(date)
+    bot.say(crossword_url + " " + date.strftime("(%A)"))
+    set_first_date(date)
 
 def is_valid_crossword_date(date):
     try:
@@ -97,7 +144,8 @@ def crossword_prev(bot, trigger):
     dates = get_crossword_dates()
     idx = dates.index(get_last_date()) - 1
     if idx < 0:
-        idx = 0
+        bot.say("No earlier crossword available")
+        return
     set_next_crossword(bot, dates[idx])
 
 @plugin.rule(r'^!cw$')
@@ -107,8 +155,35 @@ def crossword_next(bot, trigger):
     dates = get_crossword_dates()
     idx = dates.index(get_last_date()) + 1
     if idx > len(dates) - 1:
-        idx = len(dates) - 1
+        bot.say("You're all caught up. No new crossword available")
+        return
     set_next_crossword(bot, dates[idx])
+
+
+@plugin.rule(r'^!cwold$')
+def crossword_old_next(bot, trigger):
+    dates = get_crossword_dates()
+    idx = dates.index(get_first_date()) - 1
+    if idx < 0:
+        bot.say("No earlier crossword available")
+        return
+    set_next_old_crossword(bot, dates[idx])
+
+@plugin.rule(r'^!cwold prev$')
+def crossword_old_prev(bot, trigger):
+    dates = get_crossword_dates()
+    idx = dates.index(get_first_date()) + 1
+    if idx > len(dates) - 1:
+        bot.say("You're all caught up. No new crossword available")
+        return
+    set_next_old_crossword(bot, dates[idx])
+
+@plugin.rule(r'^!cwold last$')
+@plugin.require_chanmsg('Channel only command.')
+def show_last_old_crossword(bot, trigger):
+    date = get_first_date()
+    url = get_crossword_url(date) 
+    bot.say("Last old crossword was: " + url + " " + date.strftime("(%A)"))
 
 @plugin.rule(r'^!lastcw$')
 @plugin.rule(r'^!cw last$')
@@ -149,7 +224,7 @@ def get_last_index(bot, trigger):
     last_date = get_crossword_dates()[-1]
     bot.say("Last indexed crossword was: " + last_date.strftime("%d.%m.%Y"))
 
-@plugin.rule(r'^!todo')
+@plugin.rule(r'^!todo$')
 def get_crosswords_until(bot, trigger):
     all_dates = get_crossword_dates()
     last_played_date = get_last_date()
@@ -160,17 +235,40 @@ def get_crosswords_until(bot, trigger):
     else:
         bot.say("You're all up-to-date!")
 
+@plugin.rule(r'^!todoold$')
+def get_crosswords_before(bot, trigger):
+    all_dates = get_crossword_dates()
+    first_played_date = get_first_date()
+    diff = all_dates.index(first_played_date)
+    if diff > 0:
+        bot.say("Roughly " + str(diff) + " old crosswords to play")
+    else:
+        bot.say("You're all up-to-date")
+
+@plugin.rule(r'^!status$')
+def get_status(bot, trigger):
+    all_dates = get_crossword_dates()
+    first_played_date = get_first_date()
+    last_played_date = get_last_date()
+    done = all_dates.index(last_played_date) - all_dates.index(first_played_date)
+    percent_done = (done / len(all_dates)) * 100 
+    bot.say(str(done) + "/" +  str(len(all_dates)) + " done (" + str(percent_done) + "%)")
+
+
 @plugin.interval(60 * 60 * 24)
 def reindex_crosswords(bot):
     bot.say("Reindexing crosswords...", bot.settings.core.owner)
-
     idx = 1
     num_added = 0
     all_dates = get_crossword_dates()
     last_date = all_dates[-1]
 
+    bot.say("First crossword: " + str(all_dates[0]), bot.settings.core.owner)
+    bot.say("Last crossword: " +  str(last_date), bot.settings.core.owner)
+
     while True:
-        req = requests.get(NEWYORKER_CROSSWORD_BASE_URL + "page/" + str(idx))
+        cw_url = NEWYORKER_CROSSWORD_BASE_URL + "?page=" + str(idx)
+        req = requests.get(cw_url)
         if req.status_code != 200:
             break
         
@@ -200,3 +298,25 @@ def reindex_crosswords(bot):
         bot.say("Successfully added " + str(num_added) + " crossword(s) to database")
     else:
         bot.say("Crosswords up-to-date! My database contains " + str(len(all_dates)) + " crosswords.")
+
+@plugin.rule(r"^!setsolved$")
+def index_solved_from_user(bot, trigger):
+    solved_dates = get_solved_dates()
+    bot.say("I found " + str(len(solved_dates)) + " in my database")
+    all_dates = get_crossword_dates()
+    first_date = datetime.date(2021, 7, 28)
+    idx = all_dates.index(first_date)
+    all_dates_list = ""
+
+    while idx < len(all_dates):
+        curr_date = all_dates[idx]
+        try:
+            all_dates_list += get_crossword_url(curr_date) + "\r\n"
+            solved_dates.index(curr_date)
+        except ValueError:
+            solved_dates.append(curr_date)
+        idx += 1
+    set_solved_dates(solved_dates)
+    file = open(PLUGIN_BASE_DIR + "/all_dates.txt", "a")
+    file.write(all_dates_list)
+    file.close()
