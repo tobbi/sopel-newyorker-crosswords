@@ -161,6 +161,7 @@ def crossword_next(bot, trigger):
 
 
 @plugin.rule(r'^!cwold$')
+@plugin.rule(r'^!cwold next$')
 def crossword_old_next(bot, trigger):
     dates = get_crossword_dates()
     idx = dates.index(get_first_date()) - 1
@@ -224,26 +225,26 @@ def get_last_index(bot, trigger):
     last_date = get_crossword_dates()[-1]
     bot.say("Last indexed crossword was: " + last_date.strftime("%d.%m.%Y"))
 
-@plugin.rule(r'^!todo$')
-def get_crosswords_until(bot, trigger):
-    all_dates = get_crossword_dates()
+def get_todo_new(all_dates):
     last_played_date = get_last_date()
     last_date = all_dates[-1]
     diff = all_dates.index(last_date) - all_dates.index(last_played_date)
-    if diff > 0:
-        bot.say("Roughly " + str(diff) + " crosswords to play")
-    else:
-        bot.say("You're all up-to-date!")
+    return diff
 
-@plugin.rule(r'^!todoold$')
-def get_crosswords_before(bot, trigger):
-    all_dates = get_crossword_dates()
+def get_todo_old(all_dates):
     first_played_date = get_first_date()
     diff = all_dates.index(first_played_date)
-    if diff > 0:
-        bot.say("Roughly " + str(diff) + " old crosswords to play")
+    return diff
+
+@plugin.rule(r'^!todo$')
+def get_crosswords_todo(bot, trigger):
+    all_dates = get_crossword_dates()
+    todo_old = get_todo_old(all_dates)
+    todo_new = get_todo_new(all_dates)
+    if todo_old == 0 and todo_new == 0:
+        bot.say("You're all up to date!")
     else:
-        bot.say("You're all up-to-date")
+        bot.say("Roughly " + str(todo_old) + " old crosswords and " + str(todo_new) + " new crosswords to play")
 
 @plugin.rule(r'^!status$')
 def get_status(bot, trigger):
