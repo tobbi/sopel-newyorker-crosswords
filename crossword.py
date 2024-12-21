@@ -183,7 +183,7 @@ def crossword_old_prev(bot, trigger):
 @plugin.require_chanmsg('Channel only command.')
 def show_last_old_crossword(bot, trigger):
     date = get_first_date()
-    url = get_crossword_url(date) 
+    url = get_crossword_url(date)
     bot.say("Last old crossword was: " + url + " " + date.strftime("(%A)"))
 
 @plugin.rule(r'^!lastcw$')
@@ -191,7 +191,7 @@ def show_last_old_crossword(bot, trigger):
 @plugin.require_chanmsg('Channel only command.')
 def show_last_crossword(bot, trigger):
     date = get_last_date()
-    url = get_crossword_url(date) 
+    url = get_crossword_url(date)
     bot.say("Last crossword was: " + url + " " + date.strftime("(%A)"))
 
 @plugin.rule(r'^!debugshare$')
@@ -201,14 +201,14 @@ def debug_share_url(bot, trigger):
     _play_id = str(uuid.uuid4())
     _last_url = _crossword_url + "?id=" + _id + "&playId=" + _play_id
     _amuselabs_url = "https://cdn3.amuselabs.com/tny/postScore"
-    _post_score_object = { 
+    _post_score_object = {
         "updatePlayTable": False,
         "updateLoadTable": False,
         "series": "tny-weekly",
         "id": _id,
         "playId": _play_id,
         "userId": "99b711ad-17a4-4349-b830-1868a9db78fa",
-        "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:125.0) Gecko/20100101 Firefox/125.0", 
+        "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:125.0) Gecko/20100101 Firefox/125.0",
         "getStreakStatsOfLen": 0,
         "getProgressFromBackend": False
     }
@@ -218,6 +218,7 @@ def debug_share_url(bot, trigger):
 
 @plugin.rule(r'^!reindex$')
 def reindex(bot, trigger):
+    bot.say("Please wait. Reindexing crosswords...")
     reindex_crosswords(bot)
 
 @plugin.rule(r'^!lastindex$')
@@ -252,13 +253,13 @@ def get_status(bot, trigger):
     first_played_date = get_first_date()
     last_played_date = get_last_date()
     done = all_dates.index(last_played_date) - all_dates.index(first_played_date)
-    percent_done = (done / len(all_dates)) * 100 
+    percent_done = (done / len(all_dates)) * 100
     bot.say(str(done) + "/" +  str(len(all_dates)) + " done (" + str(percent_done) + "%)")
 
 
 @plugin.interval(60 * 60 * 24)
 def reindex_crosswords(bot):
-    bot.say("Reindexing crosswords...", bot.settings.core.owner)
+    bot.say("Updating crossword index...", bot.settings.core.owner)
     idx = 1
     num_added = 0
     all_dates = get_crossword_dates()
@@ -272,7 +273,7 @@ def reindex_crosswords(bot):
         req = requests.get(cw_url)
         if req.status_code != 200:
             break
-        
+
         has_matches = False
         matches = re.finditer(NEWYORKER_CROSSWORD_REGEX, req.text)
         for match in matches:
