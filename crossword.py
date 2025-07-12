@@ -24,7 +24,7 @@ DEFAULT_DATE=datetime.date(2023, 4, 17)
 DEFAULT_FIRST_DATE=datetime.date(2021, 7, 28)
 AMUSELABS_CDN_URL='https://cdn3.amuselabs.com/tny/crossword?set=tny-weekly&embed=1&compact=1&maxCols=2'
 NEWYORKER_CROSSWORD_BASE_URL='https://www.newyorker.com/puzzles-and-games-dept/crossword/'
-NEWYORKER_CROSSWORD_REGEX='((https?:\/\/)?www\.newyorker\.com)?\/puzzles-and-games-dept\/crossword\/(\d{4})\/(\d{2})\/(\d{2})'
+NEWYORKER_CROSSWORD_REGEX='((https?:\/\/)?www\.newyorker\.com)?\/puzzles-and-games-dept\/crossword\/(\d{4})[\/-](\d{2})[\/-](\d{2})'
 
 ##############################################################
 #                     Settings file                          #
@@ -179,7 +179,6 @@ def crossword_old_prev(bot, trigger):
         return
     set_next_old_crossword(bot, dates[idx])
 
-@plugin.rule(r'^!cwold last$')
 @plugin.require_chanmsg('Channel only command.')
 def show_last_old_crossword(bot, trigger):
     date = get_first_date()
@@ -193,6 +192,7 @@ def show_last_crossword(bot, trigger):
     date = get_last_date()
     url = get_crossword_url(date)
     bot.say("Last crossword was: " + url + " " + date.strftime("(%A)"))
+    show_last_old_crossword(bot, trigger)
 
 @plugin.rule(r'^!debugshare$')
 def debug_share_url(bot, trigger):
@@ -242,10 +242,12 @@ def get_crosswords_todo(bot, trigger):
     all_dates = get_crossword_dates()
     todo_old = get_todo_old(all_dates)
     todo_new = get_todo_new(all_dates)
+    num_old = str(todo_old) if todo_old > 0 else "no"
+    num_new = str(todo_new) if todo_new > 0 else "no"
     if todo_old == 0 and todo_new == 0:
         bot.say("You're all up to date!")
     else:
-        bot.say("Roughly " + str(todo_old) + " old crosswords and " + str(todo_new) + " new crosswords to play")
+        bot.say("Roughly " + num_old + " old crosswords and " + num_new + " new crosswords to play")
 
 @plugin.rule(r'^!status$')
 def get_status(bot, trigger):
@@ -259,14 +261,14 @@ def get_status(bot, trigger):
 
 @plugin.interval(60 * 60 * 24)
 def reindex_crosswords(bot):
-    bot.say("Updating crossword index...", bot.settings.core.owner)
+    # bot.say("Updating crossword index...", bot.settings.core.owner)
     idx = 1
     num_added = 0
     all_dates = get_crossword_dates()
     last_date = all_dates[-1]
 
-    bot.say("First crossword: " + str(all_dates[0]), bot.settings.core.owner)
-    bot.say("Last crossword: " +  str(last_date), bot.settings.core.owner)
+    # bot.say("First crossword: " + str(all_dates[0]), bot.settings.core.owner)
+    # bot.say("Last crossword: " +  str(last_date), bot.settings.core.owner)
 
     while True:
         cw_url = NEWYORKER_CROSSWORD_BASE_URL + "?page=" + str(idx)
@@ -285,7 +287,8 @@ def reindex_crosswords(bot):
             try:
                 all_dates.index(date)
             except ValueError:
-                bot.say("Adding " + str(date), bot.settings.core.owner)
+                # bot.say("Adding " + str(date), bot.settings.core.owner)
+                bot.say("A new crossword for " + str(date) + " was added to the database.", "#forkad")
                 all_dates.append(date)
                 num_added += 1
 
@@ -296,10 +299,10 @@ def reindex_crosswords(bot):
 
     all_dates.sort()
     set_crossword_dates(all_dates)
-    if num_added > 0:
-        bot.say("Successfully added " + str(num_added) + " crossword(s) to database")
-    else:
-        bot.say("Crosswords up-to-date! My database contains " + str(len(all_dates)) + " crosswords.")
+    # if num_added > 0:
+        # bot.say("Successfully added " + str(num_added) + " crossword(s) to database")
+    # else:
+        # bot.say("Crosswords up-to-date! My database contains " + str(len(all_dates)) + " crosswords.")
 
 @plugin.rule(r"^!setsolved$")
 def index_solved_from_user(bot, trigger):
