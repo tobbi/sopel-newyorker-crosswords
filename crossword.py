@@ -254,7 +254,7 @@ def get_status(bot, trigger):
     all_dates = get_crossword_dates()
     first_played_date = get_first_date()
     last_played_date = get_last_date()
-    done = all_dates.index(last_played_date) - all_dates.index(first_played_date)
+    done = all_dates.index(last_played_date) + 1 - all_dates.index(first_played_date)
     percent_done = (done / len(all_dates)) * 100
     bot.say(str(done) + "/" +  str(len(all_dates)) + " done (" + str(percent_done) + "%)")
 
